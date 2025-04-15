@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# set -x
 usage() { tee <<done-usage
 
     Update Package Version 2016.6.24
@@ -187,7 +188,17 @@ bump_version() {
         current=$((current + 1))
         component="${zero:-${component}}"
         if test ${current} -eq ${component_level}; then
-            component=$((component + 1))
+            if [[ $component =~ ^0[0-9]+ ]]; then
+                local prezero=$(sed -n 's/\(0\+\).*/\1/p' <<< "$component")
+                local fixzero=$(sed -n 's/0\+\(.*\)/\1/p' <<< "$component")
+                if [[ $fixzero =~ .*9$ ]]; then
+                    prezero=${prezero/0/}
+                    fixzero=${fixzero/0/}
+                fi
+                component="${prezero}$((fixzero + 1))"
+            else
+                component=$((component + 1))
+            fi
             zero=0
         fi
         result="${result}${result:+.}${component}"
@@ -296,6 +307,7 @@ detect_version() {
     local directory="${1}"
     local name="${2}"
     local pkgver="${3}"
+    [[ "${pkgver}"   =~ ^([0-9]|[1-9][0-9]+)(\.(0[1-9]))*$ ]] && pkgver="${pkgver/0}"
     local realname="${name#mingw-w64-}"
     [[ "${name}"     =~ .*-(git|hg|bzr|svn|cvs)$                      ]] && return 2
     [[ "${realname}" =~ .*[0-9].* && -z "${option_versioned}"         ]] && return 3
